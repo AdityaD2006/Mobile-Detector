@@ -1,0 +1,234 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Mobile Country Finder</title>
+  <style>
+    :root{
+      --bg:#f6f8fb;
+      --card:#ffffff;
+      --accent:#2b6ef6;
+      --muted:#6b7280;
+      --success:#16a34a;
+      --danger:#ef4444;
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+    }
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:linear-gradient(180deg,#eef2ff 0%,var(--bg) 100%);
+      color:#0f172a;
+      padding:24px;
+    }
+    .card{
+      width:100%;
+      max-width:720px;
+      background:var(--card);
+      box-shadow:0 8px 30px rgba(15,23,42,0.08);
+      border-radius:12px;
+      padding:28px;
+    }
+    h1{margin:0 0 8px 0;font-size:20px}
+    p.lead{margin:0 0 18px 0;color:var(--muted)}
+    .form-row{display:flex;gap:12px;align-items:center;margin-bottom:16px}
+    input[type="text"]{
+      flex:1;
+      padding:12px 14px;
+      border:1px solid #e6e9ef;
+      border-radius:8px;
+      font-size:16px;
+      outline:none;
+      transition:box-shadow .12s, border-color .12s;
+    }
+    input[type="text"]:focus{box-shadow:0 4px 18px rgba(43,110,246,0.12);border-color:var(--accent)}
+    button{
+      padding:10px 14px;
+      background:var(--accent);
+      color:#fff;
+      border:none;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:600;
+      display:inline-flex;
+      gap:8px;
+      align-items:center;
+    }
+    .result{
+      margin-top:10px;
+      padding:14px;
+      border-radius:10px;
+      background:#f8fafc;
+      border:1px solid #eef2ff;
+      display:flex;
+      gap:12px;
+      align-items:center;
+    }
+    .code{
+      background:linear-gradient(90deg,#eef2ff,#f0f8ff);
+      padding:10px 12px;
+      border-radius:8px;
+      font-weight:700;
+      color:var(--accent);
+      min-width:90px;
+      text-align:center;
+    }
+    .country{font-size:16px;font-weight:700}
+    .meta{color:var(--muted);font-size:13px}
+    .note{margin-top:12px;color:var(--muted);font-size:13px}
+    .error{color:var(--danger);font-weight:600}
+  </style>
+</head>
+<body>
+  <div class="card" role="main" aria-labelledby="title">
+    <h1 id="title">Digital Trust — Mobile Country Finder</h1>
+    <p class="lead">Enter a phone number (E.164 style like <code>+91 5324523641</code> or <code>+1 4515545452</code>) and see the country the dialing code belongs to.</p>
+
+    <div class="form-row" role="form">
+      <input id="phone" type="text" inputmode="tel" placeholder="+91 5324523641" aria-label="Phone number" />
+      <button id="checkBtn">Find country</button>
+    </div>
+
+    <div id="out" aria-live="polite"></div>
+
+    <p class="note">Note: this looks up the international dialing (country) code only. It does not validate carriers or exact local regions. For best results enter numbers with a leading <code>+</code> or country code.</p>
+  </div>
+
+  <script>
+    const ccMap = {
+      "1":"United States, Canada and several Caribbean territories",
+      "7":"Russia, Kazakhstan",
+      "20":"Egypt",
+      "27":"South Africa",
+      "30":"Greece",
+      "31":"Netherlands",
+      "32":"Belgium",
+      "33":"France",
+      "34":"Spain",
+      "36":"Hungary",
+      "39":"Italy",
+      "40":"Romania",
+      "41":"Switzerland",
+      "43":"Austria",
+      "44":"United Kingdom",
+      "45":"Denmark",
+      "46":"Sweden",
+      "47":"Norway",
+      "48":"Poland",
+      "49":"Germany",
+      "51":"Peru",
+      "52":"Mexico",
+      "53":"Cuba",
+      "54":"Argentina",
+      "55":"Brazil",
+      "56":"Chile",
+      "57":"Colombia",
+      "58":"Venezuela",
+      "60":"Malaysia",
+      "61":"Australia",
+      "62":"Indonesia",
+      "63":"Philippines",
+      "64":"New Zealand",
+      "65":"Singapore",
+      "66":"Thailand",
+      "81":"Japan",
+      "82":"South Korea",
+      "84":"Vietnam",
+      "86":"China",
+      "90":"Turkey",
+      "91":"India",
+      "92":"Pakistan",
+      "94":"Sri Lanka",
+      "95":"Myanmar",
+      "98":"Iran",
+      "212":"Morocco",
+      "213":"Algeria",
+      "216":"Tunisia",
+      "218":"Libya",
+      "234":"Nigeria",
+      "250":"Rwanda",
+      "254":"Kenya",
+      "255":"Tanzania",
+      "256":"Uganda",
+      "260":"Zambia",
+      "264":"Namibia",
+      "265":"Malawi",
+      "351":"Portugal",
+      "352":"Luxembourg",
+      "353":"Ireland",
+      "354":"Iceland",
+      "358":"Finland",
+      "380":"Ukraine",
+      "381":"Serbia",
+      "385":"Croatia",
+      "386":"Slovenia",
+      "420":"Czech Republic",
+      "421":"Slovakia",
+      "500":"Falkland Islands",
+      "501":"Belize",
+      "505":"Nicaragua",
+      "507":"Panama",
+      "591":"Bolivia",
+      "593":"Ecuador",
+      "595":"Paraguay",
+      "598":"Uruguay",
+      "852":"Hong Kong",
+      "853":"Macau",
+      "855":"Cambodia",
+      "856":"Laos",
+      "880":"Bangladesh",
+      "886":"Taiwan",
+      "971":"United Arab Emirates",
+      "972":"Israel",
+      "973":"Bahrain",
+      "974":"Qatar",
+      "975":"Bhutan",
+      "977":"Nepal"
+    };
+
+    const codeLengths = Array.from(new Set(Object.keys(ccMap).map(k => k.length))).sort((a,b)=>b-a);
+    const phoneInput = document.getElementById('phone');
+    const out = document.getElementById('out');
+    const btn = document.getElementById('checkBtn');
+
+    function findCountryByNumber(raw){
+      if(!raw) return {error:"Please enter a phone number."};
+      const cleaned = raw.trim().replace(/[^\d+]/g,'');
+      const digits = cleaned.startsWith('+') ? cleaned.slice(1) : cleaned;
+      if(!/^\d+$/.test(digits)) return {error:"Phone number contains invalid characters."};
+      for (const len of codeLengths) {
+        const prefix = digits.slice(0, len);
+        if(ccMap[prefix]){
+          return {code: prefix, country: ccMap[prefix], remainder: digits.slice(len)};
+        }
+      }
+      return {unknown:true, digits};
+    }
+
+    function renderResult(res){
+      if(res.error){
+        out.innerHTML = `<div class="result"><div class="code">—</div><div class="country error">${res.error}</div></div>`;
+      } else if(res.unknown){
+        out.innerHTML = `<div class="result"><div class="code">${res.digits.slice(0,3)}</div><div><div class="country error">Unknown country code</div><div class="meta">Not found in list.</div></div></div>`;
+      } else {
+        out.innerHTML = `<div class="result"><div class="code">+${res.code}</div><div><div class="country">${res.country}</div><div class="meta">Remaining digits: ${res.remainder || "(none)"}</div></div></div>`;
+      }
+    }
+
+    btn.addEventListener('click', ()=>{
+      const val = phoneInput.value;
+      const res = findCountryByNumber(val);
+      renderResult(res);
+    });
+
+    phoneInput.addEventListener('keypress', e=>{
+      if(e.key === 'Enter'){
+        btn.click();
+      }
+    });
+  </script>
+</body>
+</html>
